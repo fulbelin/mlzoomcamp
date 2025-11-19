@@ -22,3 +22,39 @@ https://challenge2020.isic-archive.com/
 - `ISIC_2020_Training_GroundTruth.csv`
 - `ISIC_2020_Training_Duplicates.csv`
 
+Place them inside:
+
+skin-cancer-detection/data/
+
+
+---
+
+## 🧪 Training
+
+Run:
+
+python src/train.py
+This:
+cleans dataset
+
+trains MobileNetV3 Small (fast mode)
+
+saves model to models/isic_fast_model.pt
+
+🤖 Start API + Web UI
+
+python src/predict.py
+Then open in browser:
+http://localhost:8000
+Upload an image → view prediction + Grad-CAM.
+
+🐳 Docker Deployment
+Build image:
+
+docker build -t skin-lesion-app .
+Run container:
+
+docker run -p 8000:8000 skin-lesion-app
+Open browser:
+
+http://localhost:8000
