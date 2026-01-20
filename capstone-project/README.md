@@ -85,6 +85,9 @@ feature values and receive a malignancy risk prediction.
 ```bash
 streamlit run app.py
 
+Then, a browser will be opened which you can try various values to test the model.
+
+![alt text](image-1.png)
 
 ##### Project structure
 
