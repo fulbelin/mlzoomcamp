@@ -19,19 +19,19 @@ source .venv/bin/activate      # Linux/Mac
 # .venv\Scripts\activate       # Windows PowerShell
 
 pip install -r requirements.txt
-
+```
 ### 2) Train the model
 
 ```bash
 python train.py
-
+```
 This creates model.bin
 
 ### 3) Run the prediction service locally
 
 ```bash
 python predict.py
-
+```
 Then open another window in powershell and use the following commands:
 
 ```bash
@@ -41,7 +41,7 @@ $body = @{
   "mean perimeter" = 92.0
   "mean area"      = 650.0
 } | ConvertTo-Json
-
+```
 
 ```bash
 Invoke-RestMethod `
@@ -49,7 +49,7 @@ Invoke-RestMethod `
   -Method Post `
   -ContentType "application/json" `
   -Body $body
-
+```
 If you don’t provide all features, missing ones will be imputed by training-set medians.
 
 An example such as this one will be printed to the terminal:
@@ -65,12 +65,12 @@ Open Docker on the background and then on the terminal, build:
 
 ```bash
 docker build -t bc-risk-service .
-
+```
 Then run:
 
 ```bash
 docker run -it --rm -p 9696:9696 bc-risk-service
-
+```
 ### 5) Deployment
 
 In addition to running the model locally and via Docker, this project is deployed using a Streamlit web UI to provide an interface for predictions.
@@ -84,7 +84,7 @@ feature values and receive a malignancy risk prediction.
 
 ```bash
 streamlit run app.py
-
+```
 Then, a browser will be opened which you can try various values to test the model.
 
 ![alt text](image-1.png)
