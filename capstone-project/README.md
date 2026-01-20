@@ -1,5 +1,9 @@
 # Breast Cancer Risk Stratification Project
 
+## Public URL for the app
+
+You can test the model I deployed from here: https://breast-cancer-prediction-jkhlf.streamlit.app/
+
 ## Problem description
 This project trains a machine learning model to classify breast tumors as **malignant** or **benign**
 based on features computed from FNA images. The goal is to provide a deployable **risk estimation service** that returns a probability of malignancy and a predicted class.
@@ -88,6 +92,7 @@ streamlit run app.py
 Then, a browser will be opened which you can try various values to test the model.
 
 ![alt text](image-1.png)
+
 
 ##### Project structure
 
