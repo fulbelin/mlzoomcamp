@@ -1,51 +1,122 @@
+import pickle
 from pathlib import Path
-MODEL_PATH = Path(__file__).resolve().parent / "model.bin"
 
 import numpy as np
 import pandas as pd
-import streamlit as st
+from sklearn.datasets import load_breast_cancer
+from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.impute import SimpleImputer
+from sklearn.metrics import roc_auc_score
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
 
-st.set_page_config(page_title="Breast Cancer Risk", layout="centered")
-st.title("Breast Cancer Risk Stratification")
-st.write("Predict **malignant vs benign** from input features. Demo project (not medical advice).")
+MODEL_PATH = Path("model.bin")
+RANDOM_STATE = 42
 
-@st.cache_resource
-def load_artifact():
-    with open(MODEL_PATH, "rb") as f:
-        return pickle.load(f)
 
-artifact = load_artifact()
-pipeline = artifact["pipeline"]
-feature_names = artifact["feature_names"]
+def load_data() -> tuple[pd.DataFrame, pd.Series]:
+    ds = load_breast_cancer(as_frame=True)
+    X = ds.data.copy()
+    y_raw = ds.target.copy()
+    # sklearn: 0=malignant, 1=benign
+    # remap: malignant=1, benign=0 (risk of malignancy)
+    y = (y_raw == 0).astype(int)
+    return X, y
 
-st.subheader("Inputs")
 
-# Provide a friendly subset first; missing values will be imputed by the pipeline
-default_fields = [
-    "mean radius",
-    "mean texture",
-    "mean perimeter",
-    "mean area",
-]
+def main() -> None:
+    X, y = load_data()
 
-inputs = {}
-for f in default_fields:
-    inputs[f] = st.number_input(f, value=float("nan"))
+    X_train, X_val, y_train, y_val = train_test_split(
+        X, y, test_size=0.2, random_state=RANDOM_STATE, stratify=y
+    )
 
-with st.expander("Advanced: set additional features"):
-    for f in feature_names:
-        if f in default_fields:
-            continue
-        inputs[f] = st.number_input(f, value=float("nan"))
+    numeric_features = list(X.columns)
 
-def make_df(payload: dict) -> pd.DataFrame:
-    row = {k: payload.get(k, np.nan) for k in feature_names}
-    return pd.DataFrame([row], columns=feature_names)
+    preprocessor = ColumnTransformer(
+        transformers=[
+            (
+                "num",
+                Pipeline(
+                    steps=[
+                        ("imputer", SimpleImputer(strategy="median")),
+                        ("scaler", StandardScaler()),
+                    ]
+                ),
+                numeric_features,
+            )
+        ],
+        remainder="drop",
+    )
 
-if st.button("Predict"):
-    X = make_df(inputs)
-    proba = float(pipeline.predict_proba(X)[:, 1][0])
-    pred = "malignant" if proba >= 0.5 else "benign"
+    # Try multiple models (rubric)
+    candidates = {
+        "logreg": LogisticRegression(max_iter=5000, solver="liblinear"),
+        "rf": RandomForestClassifier(random_state=RANDOM_STATE),
+    }
 
-    st.metric("Malignancy probability", f"{proba:.3f}")
-    st.write(f"Prediction: **{pred}**")
+    best_name = None
+    best_model = None
+    best_auc = -1.0
+
+    # Parameter tuning (rubric)
+    grids = {
+        "logreg": {
+            "model__C": [0.01, 0.1, 1.0, 10.0],
+            "model__penalty": ["l1", "l2"],
+        },
+        "rf": {
+            "model__n_estimators": [200, 500],
+            "model__max_depth": [None, 5, 10],
+            "model__min_samples_leaf": [1, 3, 5],
+        },
+    }
+
+    for name, base_model in candidates.items():
+        pipe = Pipeline(
+            steps=[
+                ("prep", preprocessor),
+                ("model", base_model),
+            ]
+        )
+
+        gs = GridSearchCV(
+            estimator=pipe,
+            param_grid=grids[name],
+            scoring="roc_auc",
+            cv=5,
+            n_jobs=-1,
+            verbose=0,
+        )
+        gs.fit(X_train, y_train)
+
+        val_proba = gs.best_estimator_.predict_proba(X_val)[:, 1]
+        auc = roc_auc_score(y_val, val_proba)
+
+        print(f"[{name}] best_cv_auc={gs.best_score_:.4f} val_auc={auc:.4f} best_params={gs.best_params_}")
+
+        if auc > best_auc:
+            best_auc = auc
+            best_name = name
+            best_model = gs.best_estimator_
+
+    assert best_model is not None
+
+    artifact = {
+        "model_name": best_name,
+        "pipeline": best_model,      # includes preprocessing
+        "feature_names": list(X.columns),
+        "malignancy_positive_class": 1,
+    }
+
+    with open(MODEL_PATH, "wb") as f:
+        pickle.dump(artifact, f)
+
+    print(f"Saved model to: {MODEL_PATH} (val_auc={best_auc:.4f}, model={best_name})")
+
+
+if __name__ == "__main__":
+    main()
