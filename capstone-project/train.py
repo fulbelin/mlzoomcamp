@@ -1,7 +1,6 @@
 import pickle
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 from sklearn.datasets import load_breast_cancer
 from sklearn.model_selection import train_test_split, GridSearchCV
@@ -13,7 +12,7 @@ from sklearn.metrics import roc_auc_score
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 
-MODEL_PATH = Path("model.bin")
+MODEL_PATH = Path(__file__).resolve().parent / "model.bin"
 RANDOM_STATE = 42
 
 
@@ -96,7 +95,10 @@ def main() -> None:
         val_proba = gs.best_estimator_.predict_proba(X_val)[:, 1]
         auc = roc_auc_score(y_val, val_proba)
 
-        print(f"[{name}] best_cv_auc={gs.best_score_:.4f} val_auc={auc:.4f} best_params={gs.best_params_}")
+        print(
+            f"[{name}] best_cv_auc={gs.best_score_:.4f} "
+            f"val_auc={auc:.4f} best_params={gs.best_params_}"
+        )
 
         if auc > best_auc:
             best_auc = auc
@@ -107,7 +109,7 @@ def main() -> None:
 
     artifact = {
         "model_name": best_name,
-        "pipeline": best_model,      # includes preprocessing
+        "pipeline": best_model,  # includes preprocessing
         "feature_names": list(X.columns),
         "malignancy_positive_class": 1,
     }
