@@ -1,14 +1,9 @@
 from pathlib import Path
 MODEL_PATH = Path(__file__).resolve().parent / "model.bin"
 
-import pickle
-from pathlib import Path
-
 import numpy as np
 import pandas as pd
 import streamlit as st
-
-MODEL_PATH = Path("model.bin")
 
 st.set_page_config(page_title="Breast Cancer Risk", layout="centered")
 st.title("Breast Cancer Risk Stratification")
